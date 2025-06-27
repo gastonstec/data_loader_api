@@ -3,28 +3,19 @@
 from config import EnvSettings, AppSettings, DBSettings
 # Logging imports
 from loguru import logger
-
 # Database imports
 from database import PoolSettings, connect, close, test_connection
+# FastAPI imports
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+# FastAPI routers
 
-def startup():
-     # Load environment settings
-    env_settings = EnvSettings()
-    logger.info(f"Environment: {env_settings.env}, Debug: {env_settings.debug}")
 
-    # Ensure the logger is configured
-    logger.add(sink=f"{env_settings.log_file}", rotation="1 MB", level=f"{env_settings.log_level}", backtrace=True, diagnose=True)
-    
-    # Load application settings
-    app_settings = AppSettings()
-    logger.info(f"App Name: {app_settings.name}, Version: {app_settings.version}")
-
-    # Load database settings
-    if env_settings.db_connect:
+# Connect to the database and return the connection pool.
+def connect_to_db():
+    try:
         db_settings = DBSettings()
         logger.info(f"Connecting to database {db_settings.dbname} at {db_settings.host}:{db_settings.port}")
-
-        # Create pool settings
         pool_settings = PoolSettings(
             user=db_settings.user,
             password=db_settings.password,
@@ -36,29 +27,80 @@ def startup():
             max_size=db_settings.max_size,
             timeout=db_settings.timeout
         )
-
-        # Connect to the database
-        try:
-            conn_pool = connect(settings=pool_settings)
-        except ValueError as e:
-            logger.error(f"Failed to create database connection pool: {e}")
-            return    
+        conn_pool = connect(settings=pool_settings)
         logger.info("Database connection pool created successfully.")
-        logger.info(f"Pool settings: {conn_pool.connection_class}")
+        return conn_pool
+    except ValueError as e:
+        logger.error(f"Failed to create database connection pool: {e}")
+        return None
 
-        # Test the connection
-        try:
-            dbversion = test_connection(pool=conn_pool)
-            logger.info(f"Connected to database version: {dbversion}")
-        except ValueError as e:
-            logger.error(f"Connection failed: {e}")
+# FastAPI lifespan events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup lifespan event handler
+    logger.info("Starting up the FastAPI application...")
+    
+    # Connect to the database and create a connection pool
+    conn_pool = connect_to_db()
+    if conn_pool is None:
+        logger.error("Failed to connect to the database during startup.")
+        raise RuntimeError("Database connection failed")
+    
+    # Test the connection to ensure it's working
+    logger.info("Testing database connection...")
+    db_version = test_connection(conn_pool)
+    if db_version is None:
+        logger.error("Database connection test failed. No version returned.")
+        raise RuntimeError("Database connection test failed")
+    logger.info(f"Database connection test successful. Version: {db_version}")
+    
+    # Store the connection pool in the app state
+    app.state.conn_pool = conn_pool
 
-        # Close the pool
-        try:
-            close(pool=conn_pool)
-        except ValueError as e:
-            logger.error(f"Failed to close database connection pool: {e}")
-            return
-        logger.info("Database connection pool closed.")
+    yield       # Yield control back to FastAPI
 
-startup()
+    # Shutdown lifespan event handler
+    logger.info("Shutting down the FastAPI application...")
+
+    # Ensure the connection pool is closed properly
+    if not hasattr(app.state, 'conn_pool'):
+        logger.warning("No connection pool found in app state during shutdown.")
+        return
+    
+    # Close the connection pool
+    logger.info("Closing the database connection pool...")
+    try:
+        # Close the connection pool
+        close(app.state.conn_pool)
+        app.state.conn_pool = None  # Clear the pool from app state
+        logger.info("Database connection pool closed successfully.")
+    except Exception as e:
+        logger.error(f"Error closing connection pool: {e}")
+
+# Create FastAPI app with lifespan events
+app = FastAPI(lifespan=lifespan)
+# Include the configuration settings in the app metadata
+app.title = AppSettings.name
+app.version = AppSettings.version
+app.description = AppSettings.description
+# Include the root path and API base URL
+app.root_path = AppSettings.root_path
+# Include the documentation URLs
+app.docs_url = AppSettings.docs_url
+app.redoc_url = AppSettings.redoc_url
+
+# Root endpoint for health check
+@app.get("/")
+async def root():
+    return {f"message":"OK"}
+
+# Get database version
+@app.get("/dbversion")
+async def dbversion():
+    try:
+        db_version = test_connection(app.state.conn_pool)
+    except Exception as e:
+        logger.error(f"Error testing database connection: {e}")
+        return {"error": "Database connection failed"}
+    return {f"message": {db_version}}
+
