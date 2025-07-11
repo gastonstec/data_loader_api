@@ -30,3 +30,17 @@ class DBSettings:
     min_size: int = 1
     max_size: int = 5
     timeout: int = 30
+
+    def is_valid(self) -> bool:
+        # Validate the database settings.
+        if not self.user or not self.password or not self.host or not self.dbname:
+            return False
+        if not isinstance(self.port, int) or self.port <= 0:
+            return False
+        if not isinstance(self.min_size, int) or self.min_size < 0:
+            return False
+        if not isinstance(self.max_size, int) or self.max_size <= 0:
+            return False
+        if self.min_size > self.max_size:
+            return False
+        return True

@@ -14,24 +14,28 @@ from contextlib import asynccontextmanager
 # Connect to the database and return the connection pool.
 def connect_to_db():
     try:
+        # Load database settings from the environment
         db_settings = DBSettings()
+
+        # Validate the database settings    
+        if not db_settings.is_valid():
+            raise ValueError("Invalid database settings provided.")
+        
+        # Log the connection details
         logger.info(f"Connecting to database {db_settings.dbname} at {db_settings.host}:{db_settings.port}")
-        pool_settings = PoolSettings(
-            user=db_settings.user,
-            password=db_settings.password,
-            host=db_settings.host,
-            port=db_settings.port,
-            dbname=db_settings.dbname,
-            appname=db_settings.appname,
-            min_size=db_settings.min_size,
-            max_size=db_settings.max_size,
-            timeout=db_settings.timeout
-        )
+        
+        # Create the connection settings
+        pool_settings = PoolSettings(user=db_settings.user, password=db_settings.password, host=db_settings.host, \
+                                port=db_settings.port, dbname=db_settings.dbname, appname=db_settings.appname, \
+                                min_size=db_settings.min_size, max_size=db_settings.max_size, timeout=db_settings.timeout)
+        # Create the connection
+        logger.info("Creating database connection...")
         conn_pool = connect(settings=pool_settings)
-        logger.info("Database connection pool created successfully.")
+        db_version = test_connection(conn_pool)
+        logger.info("Database connection created successfully: {db_version}")
         return conn_pool
     except ValueError as e:
-        logger.error(f"Failed to create database connection pool: {e}")
+        logger.error(f"Failed to create database connection: {e}")
         return None
 
 # FastAPI lifespan events
@@ -40,19 +44,11 @@ async def lifespan(app: FastAPI):
     # Startup lifespan event handler
     logger.info("Starting up the FastAPI application...")
     
-    # Connect to the database and create a connection pool
+    # Connect to the database
     conn_pool = connect_to_db()
     if conn_pool is None:
         logger.error("Failed to connect to the database during startup.")
         raise RuntimeError("Database connection failed")
-    
-    # Test the connection to ensure it's working
-    logger.info("Testing database connection...")
-    db_version = test_connection(conn_pool)
-    if db_version is None:
-        logger.error("Database connection test failed. No version returned.")
-        raise RuntimeError("Database connection test failed")
-    logger.info(f"Database connection test successful. Version: {db_version}")
     
     # Store the connection pool in the app state
     app.state.conn_pool = conn_pool
@@ -79,15 +75,14 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app with lifespan events
 app = FastAPI(lifespan=lifespan)
+
 # Include the configuration settings in the app metadata
 app.title = AppSettings.name
 app.version = AppSettings.version
 app.description = AppSettings.description
-# Include the root path and API base URL
-app.root_path = AppSettings.root_path
-# Include the documentation URLs
-app.docs_url = AppSettings.docs_url
-app.redoc_url = AppSettings.redoc_url
+app.host = AppSettings.host
+app.port = AppSettings.port
+
 
 # Root endpoint for health check
 @app.get("/")
