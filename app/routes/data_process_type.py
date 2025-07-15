@@ -9,4 +9,4 @@ async def get_data_process_types():
 
 @router.post("/")
 async def create_data_process_type(data_Proce: dict):
-    return {"message": "Item created", "item": item}
+    return {"message": "Item created", "item": ""}

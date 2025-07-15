@@ -9,4 +9,4 @@ async def get_processes():
 
 @router.post("/")
 async def create_process(item: dict):
-    return {"message": "Item created", "item": item}
+    return {"message": "Item created", "item": ""}

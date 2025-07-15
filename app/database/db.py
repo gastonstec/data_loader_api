@@ -1,6 +1,7 @@
 from psycopg_pool import ConnectionPool
 from psycopg import Connection
 from psycopg.rows import TupleRow
+from pydantic import BaseModel
 
 # Database connection class for managing PostgreSQL connections using psycopg_pool
 class DBConnection:
@@ -21,11 +22,12 @@ class DBConnection:
         self.min_size:int = min_size
         self.max_size:int = max_size
         self.timeout:float = timeout
-        self.pool: ConnectionPool[Connection[TupleRow]] = None
+        from typing import Optional
+        self.pool: ConnectionPool[Connection[TupleRow]]
 
     # Connect to the database and return a connection pool
     # Returns a ConnectionPool object
-    def connect(self) -> ConnectionPool[Connection[TupleRow]]:
+    def connect(self):
         # Check pool selfs
         if self.min_size < 0 or self.max_size < 0 or self.timeout < 0:
             raise ValueError("Pool self must be non-negative")
@@ -38,7 +40,6 @@ class DBConnection:
         if self.min_size < 1:
             raise ValueError("Minimum pool size must be greater than or equal to 1")
         
-        # Create connection string
         # Build connection string
         connstr =  f"user={self.user} " \
             f"password={self.password} " \
@@ -47,17 +48,14 @@ class DBConnection:
             f"dbname={self.dbname} " \
             f"application_name='{self.appname}'"
         
-        # Create pool
+        # Create connection pool
         try:
             self.pool: ConnectionPool[Connection[TupleRow]] = \
             ConnectionPool(conninfo=connstr, min_size=self.min_size, max_size=self.max_size, timeout=self.timeout)
         except Exception as e:
             raise ValueError(f"Failed to create connection pool: {e}")
-    
-        # Return ConnectionPool
-        # return self.pool
 
-
+    # Test the connection by executing a simple query
     def test(self) -> str:
         # Check connection
         # conn: Connection[TupleRow] = None
@@ -78,7 +76,7 @@ class DBConnection:
     
         return str(dbversion)
 
-    # Close pool
+    # Close connection pool
     def close(self) -> None:
         try:
             self.pool.close()

@@ -1,22 +1,23 @@
 
 # Configuration imports
-from .config import EnvSettings, AppSettings, DBSettings
+from app.config import AppSettings, DBSettings
 # Logging imports
 from loguru import logger
-# Database imports
-from .database import DBConnection
-# FastAPI imports
-from fastapi import Depends, FastAPI
-from contextlib import asynccontextmanager
-from fastapi import APIRouter
-from .dependencies import get_query_token, get_token_header
-from .routers import system_router
 # Jsend for structured responses
 import jsend
-
+# Database imports
+from app.database.db import DBConnection
+# FastAPI imports
+from fastapi import Depends, FastAPI
+from fastapi.routing import APIRoute
+from contextlib import asynccontextmanager
+# clearfrom fastapi import APIRouter
+# from .dependencies import get_query_token, get_token_header
+from app.routes.system import router as system_router
+# from typing import Optional
 
 # Connect to the database and return the connection pool.
-def connect_to_db() -> DBConnection:
+def connect_to_db():
     try:
         # Load database settings from the environment
         db_settings = DBSettings()
@@ -40,8 +41,7 @@ def connect_to_db() -> DBConnection:
         # Return the connection pool
         return db_conn
     except ValueError as e:
-        logger.error(f"Failed to create database connection: {e}")
-        return None
+        raise ValueError(f"Failed to create database connection: {e}")
 
 # FastAPI lifespan events
 @asynccontextmanager
@@ -80,31 +80,26 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error closing connection pool: {e}")
 
 # Create FastAPI app with lifespan events
-app = FastAPI(lifespan=lifespan, dependencies=[Depends(get_query_token)])
+app = FastAPI(lifespan=lifespan)
+# app = FastAPI(lifespan=lifespan, dependencies=[Depends(get_query_token)])
 
-# # Include the configuration settings in the app metadata
+# Include the configuration settings in the app metadata
 app.title = AppSettings.name
 app.version = AppSettings.version
 app.description = AppSettings.description
-app.host = AppSettings.host
-app.port = AppSettings.port
+# Include routers
+app.include_router(system_router, prefix=AppSettings.base_url)
 
 
 # Root endpoint for health check
 @app.get("/")
 async def root():
-    return jsend.success({"message":"OK"})
+    return jsend.success({'message':'OK'})
 
-# Get database version
-@app.get("/dbversion")
-async def dbversion():
-    try:
-        db_version = app.state.db_conn.test()
-    except Exception as e:
-        jsend.fail({"message": {str(e)}})
-    return jsend.success({"database": {db_version}})
 
-# Include the system router
-app.include_router(system_router.router, prefix="/sys", tags=["system"])
+
+
+
+
 
 
