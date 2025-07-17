@@ -29,7 +29,8 @@ class DBSettings:
     appname: str = "DataLoaderAPI"
     min_size: int = 1
     max_size: int = 5
-    timeout: int = 30
+    timeout_qry: float = 5.0
+    timeout_conn: float = 45.0
 
     def is_valid(self) -> bool:
         # Validate the database settings.

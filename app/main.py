@@ -11,10 +11,9 @@ from app.database.db import DBConnection
 from fastapi import Depends, FastAPI
 from fastapi.routing import APIRoute
 from contextlib import asynccontextmanager
-# clearfrom fastapi import APIRouter
-# from .dependencies import get_query_token, get_token_header
+# Router imports
 from app.routes.system import router as system_router
-# from typing import Optional
+from app.routes.data_process_type import router as data_process_type_router
 
 # Connect to the database and return the connection pool.
 def connect_to_db():
@@ -31,22 +30,22 @@ def connect_to_db():
         
         db_conn = DBConnection(user=db_settings.user, password=db_settings.password, host=db_settings.host, \
                                  port=db_settings.port, dbname=db_settings.dbname, appname=db_settings.appname, \
-                                 min_size=db_settings.min_size, max_size=db_settings.max_size, timeout=db_settings.timeout)
+                                 min_size=db_settings.min_size, max_size=db_settings.max_size, timeout=DBSettings.timeout_conn)
         # Connect to the database        
         logger.info("Creating database connection...")
-        db_conn.connect()
+        db_conn.connect(timeout=DBSettings.timeout_conn)
         db_version = db_conn.test()
         # Log the successful connection
         logger.info(f"Database connection established successfully. Version: {db_version}")
         # Return the connection pool
         return db_conn
-    except ValueError as e:
-        raise ValueError(f"Failed to create database connection: {e}")
+    except Exception as e:
+        raise e  # Re-raise the exception to be handled in the lifespan event
 
 # FastAPI lifespan events
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup lifespan event handler
+async def lifespan(app: FastAPI, dependencies=[Depends(connect_to_db)]):
+       # Startup lifespan event handler
     logger.info(f"Starting up {app.title} v{app.version} application...")
     
     # Connect to the database
@@ -73,28 +72,26 @@ async def lifespan(app: FastAPI):
     logger.info("Closing the database connection pool...")
     try:
         # Close the connection pool
-        db_conn.close()
+        db_conn.close(timeout=DBSettings.timeout_conn)
         app.state.db_conn = None  # Clear the pool from app state
         logger.info("Database connection closed successfully.")
     except Exception as e:
         logger.error(f"Error closing connection pool: {e}")
 
-# Create FastAPI app with lifespan events
-app = FastAPI(lifespan=lifespan)
-# app = FastAPI(lifespan=lifespan, dependencies=[Depends(get_query_token)])
 
-# Include the configuration settings in the app metadata
-app.title = AppSettings.name
-app.version = AppSettings.version
-app.description = AppSettings.description
+# Create FastAPI app
+app = FastAPI(lifespan=lifespan, \
+            title=AppSettings.name, version=AppSettings.version, \
+            description=AppSettings.description)
+
 # Include routers
 app.include_router(system_router, prefix=AppSettings.base_url)
-
+app.include_router(data_process_type_router, prefix=AppSettings.base_url)
 
 # Root endpoint for health check
 @app.get("/")
 async def root():
-    return jsend.success({'message':'OK'})
+    return jsend.success({'status':'OK'})
 
 
 

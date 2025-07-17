@@ -1,10 +1,10 @@
 from psycopg_pool import ConnectionPool
 from psycopg import Connection
 from psycopg.rows import TupleRow
-from pydantic import BaseModel
+
 
 # Database connection class for managing PostgreSQL connections using psycopg_pool
-class DBConnection:
+class DBConnection():
     # Initialize the database connection parameters
     # user: str, password: str, host: str, port: int, dbname: str, \
     # appname: str, min_size: int, max_size: int, timeout: float
@@ -27,7 +27,7 @@ class DBConnection:
 
     # Connect to the database and return a connection pool
     # Returns a ConnectionPool object
-    def connect(self):
+    def connect(self, timeout: float):
         # Check pool selfs
         if self.min_size < 0 or self.max_size < 0 or self.timeout < 0:
             raise ValueError("Pool self must be non-negative")
@@ -48,22 +48,24 @@ class DBConnection:
             f"dbname={self.dbname} " \
             f"application_name='{self.appname}'"
         
-        # Create connection pool
         try:
+            # Create connection pool
             self.pool: ConnectionPool[Connection[TupleRow]] = \
             ConnectionPool(conninfo=connstr, min_size=self.min_size, max_size=self.max_size, timeout=self.timeout)
+            # Open the connection pool
+            self.pool.open(wait=True, timeout=timeout)  # Establish the connection pool
         except Exception as e:
-            raise ValueError(f"Failed to create connection pool: {e}")
+            raise ValueError(f"Failed to create connection: {e}")
 
     # Test the connection by executing a simple query
     def test(self) -> str:
-        # Check connection
-        # conn: Connection[TupleRow] = None
         try:
-            # Test connection by executing a simple query
-            conn = self.pool.getconn()  # Get a connection from the pool
+            # Get a connection from the pool
+            conn = self.pool.getconn()
+            # Check if the connection is valid
             if conn is None:
                 raise ValueError("Failed to get a connection from the pool")
+            # Execute a simple query to test the connection
             with conn.cursor() as cur:
                 cur.execute("SELECT version()")
                 dbversion = cur.fetchone()
@@ -77,9 +79,9 @@ class DBConnection:
         return str(dbversion)
 
     # Close connection pool
-    def close(self) -> None:
+    def close(self, timeout: float):
         try:
-            self.pool.close()
+          self.pool.close(timeout=timeout)  # Close the connection pool
         except Exception as e:
             raise ValueError(e)
         return
