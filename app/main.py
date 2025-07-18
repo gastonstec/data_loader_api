@@ -6,7 +6,7 @@ from loguru import logger
 # Jsend for structured responses
 import jsend
 # Database imports
-from app.database.db import DBConnection
+from app.database.db import DBConnectionPool
 # FastAPI imports
 from fastapi import Depends, FastAPI
 from fastapi.routing import APIRoute

@@ -1,10 +1,10 @@
 from psycopg_pool import ConnectionPool
-from psycopg import Connection
+from psycopg import Connection, Cursor
 from psycopg.rows import TupleRow
 
 
 # Database connection class for managing PostgreSQL connections using psycopg_pool
-class DBConnection():
+class DBConnectionPool():
     # Initialize the database connection parameters
     # user: str, password: str, host: str, port: int, dbname: str, \
     # appname: str, min_size: int, max_size: int, timeout: float
@@ -85,3 +85,24 @@ class DBConnection():
         except Exception as e:
             raise ValueError(e)
         return
+
+    # Excute a query
+    def execute(qrystr: str):
+        try:
+            # Get a connection from the pool
+            conn = self.pool.getconn()
+            # Check if the connection is valid
+            if conn is None:
+                raise ValueError("Failed to get a connection from the pool")
+            # Execute a simple query to test the connection
+            with conn.cursor() as cur:
+                cur.execute("select * from data_process_type", )
+                rows = cur.fetchall()
+            # Commit changes (if any)
+            conn.commit()
+            # Return connection to pool
+            self.pool.putconn(conn)
+        except Exception as e:
+            raise ValueError(e)
+    
+        return rows
