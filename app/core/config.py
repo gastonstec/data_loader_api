@@ -6,6 +6,7 @@ class EnvSettings:
     log_level: str = "DEBUG"
     log_file: str = "app.log"
 
+
 # Application settings
 class AppSettings:
     name: str = "DataLoaderAPI"
@@ -18,12 +19,12 @@ class AppSettings:
     root_path: str = ""
     base_url: str = "/api/v1"
 
+
 # Database settings
 class DBSettings:
     user: str = "postgres"
     password: str = "c4rec4"
-    # host: str = "localhost"
-    host: str = "147.182.190.223"
+    host: str = "dynaworks.mx"
     port: int = 5432
     dbname: str = "gtim_services"
     appname: str = "DataLoaderAPI"
@@ -34,14 +35,32 @@ class DBSettings:
 
     def is_valid(self) -> bool:
         # Validate the database settings.
-        if not self.user or not self.password or not self.host or not self.dbname:
+        if (
+            not self.user
+            or not self.password
+            or not self.host
+            or not self.dbname
+        ):
             return False
-        if not isinstance(self.port, int) or self.port <= 0:
+        # Validate the database port.
+        if (
+            not isinstance(self.port, int)
+            or self.port < 1
+        ):
             return False
-        if not isinstance(self.min_size, int) or self.min_size < 0:
+        # Validate the database min_size.
+        if (
+            not isinstance(self.min_size, int)
+            or self.min_size < 0
+        ):
             return False
-        if not isinstance(self.max_size, int) or self.max_size <= 0:
+        # Validate the database max_size.
+        if (
+            not isinstance(self.max_size, int)
+            or self.max_size <= 0
+        ):
             return False
+        # Validate the database min_size and max_size.
         if self.min_size > self.max_size:
             return False
         return True

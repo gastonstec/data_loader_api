@@ -1,30 +1,50 @@
-# FastAPI imports
-from typing import Optional
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request
-import pydantic
+# FastAPI
+from fastapi import APIRouter, Request
+# Models
+from app.models.data_process_type import get_all, get_by_id, create
+# JSend response format
 import jsend
-from app.models.data_process_type import get_data_process_type
 
-router = APIRouter(tags=["processtypes"])
-
-@router.get("/processtypes")
-async def get_data_process_types(request: Request, Depends(get_data_process_type)):
-    db_conn = request.app.state.db_conn
-    results = get_data_process_type(db_conn=db_conn)
-    # data_process_types = get_data_process_type(data_process_type, request.state.db_conn)
-    return jsend.success({f"data_process_type": {results}})
+# Create a router for the API
+router = APIRouter(prefix="/api/v1/processtypes", tags=["Data Process Types"])
 
 
-@router.get("/processtypes/{process_type}")
-async def get_data_process_types(request: Request, process_type: str | None = None):
-    # data_process_types = get_data_process_type(data_process_type, request.state.db_conn)
-    return jsend.success({f"message": "Data process type retrieved successfully"})
-    # if not data_process_type:
-    #     jsend.success({"message": "Data process type not found"})
-    # else: 
-    #     jsend.success({"data_process_type": "{data_process_types}"})
+# Get all data process types
+@router.get("/")
+async def get_data_process_types(request: Request):
+    try:
+        db_conn = request.app.state.db_conn
+        results = get_all(db_conn=db_conn)
+        return jsend.success({"data_process_type": results})
+    except Exception as e:
+        return jsend.error({"message": str(e)})
 
 
-@router.post("/processtypes")
-async def create_data_process_type(request: Request):
-    return jsend.success({f"message": "Item created", "item": ""})
+# Get a specific process type
+@router.get("/{data_process_type}")
+async def get_data_process_type(
+    request: Request,
+    data_process_type: str
+):
+    try:
+        db_conn = request.app.state.db_conn
+        results = get_by_id(
+            db_conn=db_conn, data_process_type=data_process_type
+        )
+        return jsend.success({"data_process_type": results})
+    except Exception as e:
+        return jsend.error({"message": str(e)})
+
+
+# Create a new process type
+@router.post("/")
+async def create_data_process_type(
+    request: Request
+):
+    try:
+        db_conn = request.app.state.db_conn
+        data = await request.json()
+        results = create(db_conn=db_conn, data=data)
+        return jsend.success({"data_process_type": results})
+    except Exception as e:
+        return jsend.error({"message": str(e)})
