@@ -69,7 +69,7 @@ def connect_to_db(db_conn: DBConnectionPool):
         )
         return
     except Exception as e:
-        raise e
+        raise RuntimeError(f"Database connection failed: {e}")
 
 
 # FastAPI lifespan events
@@ -113,8 +113,6 @@ async def lifespan(app: FastAPI):
         logger.info("Database connection closed successfully.")
     except Exception as e:
         logger.error(f"Error closing connection pool: {e}")
-
-    return
 
 
 # Create FastAPI app

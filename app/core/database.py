@@ -124,4 +124,3 @@ class DBConnectionPool():
             self.pool.close(timeout=timeout)
         except Exception as e:
             raise ValueError(e)
-        return
