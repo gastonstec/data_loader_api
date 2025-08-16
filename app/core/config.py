@@ -24,9 +24,9 @@ class AppSettings:
 class DBSettings:
     user: str = "postgres"
     password: str = "c4rec4"
-    host: str = "dynaworks.mx"
+    host: str = "localhost"
     port: int = 5432
-    dbname: str = "gtim_services"
+    dbname: str = "corilian"
     appname: str = "DataLoaderAPI"
     min_size: int = 1
     max_size: int = 5
