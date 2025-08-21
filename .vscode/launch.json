@@ -5,11 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File",
+            "name": "Debugger: FastAPI",
             "type": "debugpy",
             "request": "launch",
-            "program": "app/main.py",
-            "console": "integratedTerminal"
+            "module": "uvicorn",
+            "args": [
+                "app.main:app",
+                "--reload"
+            ],
+            "jinja": true,
+            "envFile": "${workspaceFolder}/.venv"
         }
     ]
 }
