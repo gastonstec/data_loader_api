@@ -13,7 +13,7 @@ class DataProcessType(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    def check_fields(self) -> bool:
+    def validate_fields(self) -> bool:
         # Check data process type
         if (
             not self.data_process_type

@@ -1,35 +1,28 @@
-# Psycopg imports
 import psycopg
-# App imports
+import json
 from app.core.database import DBConnectionPool
-from app.schemas.data_process_type import DataProcessType
+# from app.schemas.data_process_type import DataProcessType
 
 
-# Constants
-FAILED_POOL_CONN = "Failed to get a connection from the pool"
+QRY_SELECT_ALL = (
+    "SELECT data_process_type, description, table_prefix, "
+    "source_table_template, destination_table_name, "
+    "other_info, created_at, updated_at "
+    "FROM data_process_type ORDER BY data_process_type"
+)
 
+QRY_SELECT_BY_ID = (
+    "SELECT data_process_type, description, table_prefix, "
+    "source_table_template, destination_table_name, "
+    "other_info, created_at, updated_at "
+    "FROM data_process_type WHERE data_process_type = %s"
+)
 
-# Map input data to DataProcessType model dict
-def map_data_to_process_type(data: dict) -> [DataProcessType]:
-    # Create data process type list
-    dpt_list = []
-    try:
-        # Map the input data to the DataProcessType model
-        for item in data:
-            dpt = DataProcessType(
-                data_process_type=item["data_process_type"],
-                description=item["description"],
-                table_prefix=item["table_prefix"],
-                source_table_template=item["source_table_template"],
-                destination_table_name=item["destination_table_name"],
-                other_info=item["other_info"]
-            )
-            # Validate the data process type
-            if dpt.check_fields():
-                dpt_list.append(dpt)
-    except Exception as e:
-        raise ValueError(f"Error mapping data to DataProcessType: {e}")
-    return dpt_list
+QRY_INSERT = (
+    "INSERT INTO data_process_type (data_process_type, description, "
+    "table_prefix, source_table_template, destination_table_name, other_info) "
+    "VALUES (%s, %s, %s, %s, %s, %s) RETURNING created_at, updated_at"
+)
 
 
 # Get all data process types
@@ -39,14 +32,9 @@ def get_all(db_conn: DBConnectionPool) -> list[dict]:
         conn = db_conn.get_conn()
         # Check if the connection is valid
         if conn is None:
-            raise ValueError(FAILED_POOL_CONN)
+            raise ValueError("Failed to get a connection from the pool")
         # Execute query
-        qrystr = (
-            "SELECT data_process_type, description, table_prefix, "
-            "source_table_template, destination_table_name, "
-            "other_info, created_at, updated_at "
-            "FROM data_process_type ORDER BY data_process_type"
-        )
+        qrystr = QRY_SELECT_ALL
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(qrystr)
             rows = cur.fetchall()
@@ -68,14 +56,9 @@ def get_by_id(
         conn = db_conn.get_conn()
         # Check if the connection is valid
         if conn is None:
-            raise ValueError(FAILED_POOL_CONN)
+            raise ValueError("Failed to get a connection from the pool")
         # Execute query
-        qrystr = (
-            "SELECT data_process_type, description, table_prefix,"
-            "source_table_template, destination_table_name,"
-            "other_info, created_at, updated_at "
-            "FROM data_process_type WHERE data_process_type = %s"
-        )
+        qrystr = QRY_SELECT_BY_ID
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(qrystr, (data_process_type,))
             rows = cur.fetchall()
@@ -89,54 +72,52 @@ def get_by_id(
 
 # Create a new data process type
 def create(db_conn: DBConnectionPool, data: dict) -> list[dict]:
+
+    # Validate input
+    if not data['data_process_types']:
+        raise ValueError("data_process_types is required")
+
     try:
-        # Validate input
-        if not data:
-            raise ValueError("data_process_type is required")
-
-        # Map the input data to the DataProcessType model
-        dpt_list = map_data_to_process_type(data)
-
         # Get a connection from the pool
         conn = db_conn.get_conn()
 
         # Check if the connection is valid
         if conn is None:
-            raise ValueError(FAILED_POOL_CONN)
+            raise ValueError("Failed to get a connection from the pool")
 
-        # Execute insert
+        # Execute inserts
+        qrystr = QRY_INSERT
         try:
-            for dpt in dpt_list:
-                # Build query
-                qrystr = (
-                    "INSERT INTO data_process_type (data_process_type, "
-                    "description, table_prefix, source_table_template, "
-                    "destination_table_name, other_info) "
-                    "VALUES (%s, %s, %s, %s, %s, %s)"
-                )
+            for dpt in data['data_process_types']:
                 # Execute insert
-                with conn.cursor() as cur:
-                    cur.execute(qrystr, (
-                        dpt.data_process_type,
-                        dpt.description,
-                        dpt.table_prefix,
-                        dpt.source_table_template,
-                        dpt.destination_table_name,
-                        dpt.other_info
-                    ))
+                conn.cursor().execute(qrystr, (
+                    str(dpt['data_process_type']),
+                    str(dpt['description']),
+                    str(dpt['table_prefix']),
+                    str(dpt['source_table_template']),
+                    str(dpt['destination_table_name']),
+                    json.dumps(dpt['other_info'])
+                ))
+                row = conn.cursor().fetchone()
+                dpt['created_at'] = row['created_at']
+                dpt['updated_at'] = row['updated_at']
+
             # Commit changes
             conn.commit()
+
         except Exception as e:
             conn.rollback()
             raise ValueError(
                 f"Error inserting data into data_process_type: {e}"
             )
-        finally:
-            # Release connection to the pool
-            db_conn.put_conn(conn)
-        return dpt_list
+            return
     except Exception as e:
-        raise ValueError(f"Error creating data_process_types: {e}")
+        raise ValueError({"message": str(e)})
+        return
+    finally:
+        # Release connection to the pool
+        db_conn.put_conn(conn)
+    return data
 
 
 # Update a specific process type
@@ -150,7 +131,7 @@ def update(
         conn = db_conn.get_conn()
         # Check if the connection is valid
         if conn is None:
-            raise ValueError(FAILED_POOL_CONN)
+            raise ValueError("Failed to get a connection from the pool")
         # Execute update
         qrystr = (
             "UPDATE data_process_type SET "
@@ -175,4 +156,26 @@ def update(
         db_conn.put_conn(conn)
         return True
     except Exception as e:
-        raise ValueError(f"Error updating data_process_types: {e}")
+        raise ValueError(e)
+
+        # Get a connection from the pool
+        conn = db_conn.get_conn()
+        # Check if the connection is valid
+        if conn is None:
+            raise ValueError("Failed to get a connection from the pool")
+        # Execute query
+        qrystr = (
+            "SELECT data_process_type, description, table_prefix,"
+            "source_table_template, destination_table_name,"
+            "other_info, created_at, updated_at "
+            "FROM data_process_type WHERE data_process_type = %s"
+        )
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(qrystr, (data_process_type,))
+            rows = cur.fetchall()
+        # Return rows
+        conn.commit()
+        db_conn.put_conn(conn)
+        return rows
+    except Exception as e:
+        raise ValueError(e)
