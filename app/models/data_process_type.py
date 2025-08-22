@@ -74,8 +74,14 @@ def get_by_id(
 def create(db_conn: DBConnectionPool, data: dict) -> list[dict]:
 
     # Validate input
-    if not data['data_process_types']:
-        raise ValueError("data_process_types is required")
+    try:
+        if not isinstance(data, dict):
+            raise ValueError("Input data must be a dictionary")
+        if 'data_process_types' not in data:
+            raise ValueError("data_process_types is required")
+    except Exception as e:
+        raise ValueError(str(e))
+        return
 
     try:
         # Get a connection from the pool
@@ -110,7 +116,6 @@ def create(db_conn: DBConnectionPool, data: dict) -> list[dict]:
             raise ValueError(
                 f"Error inserting data into data_process_type: {e}"
             )
-            return
     except Exception as e:
         raise ValueError({"message": str(e)})
         return

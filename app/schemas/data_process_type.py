@@ -13,7 +13,7 @@ class DataProcessType(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    def validate_fields(self) -> bool:
+    def check_values(self) -> bool:
         # Check data process type
         if (
             not self.data_process_type
@@ -21,18 +21,22 @@ class DataProcessType(BaseModel):
             or len(self.data_process_type) > 25
         ):
             raise ValueError("data_process_type value is invalid")
+            return False
         # Check description
         if (
             not self.description
             or len(self.description) < 2
         ):
             raise ValueError("description value is invalid")
+            return False
         # Check table prefix
         if len(self.table_prefix) > 15:
             raise ValueError("table_prefix value is invalid")
+            return False
         # Check source table template
         if (
             len(self.source_table_template) < 15
         ):
             raise ValueError("source_table_template value is invalid")
+            return False
         return True
