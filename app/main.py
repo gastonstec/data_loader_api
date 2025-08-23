@@ -9,7 +9,6 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-
 # Routers imports
 from app.routes.system import router as system_router
 from app.routes.data_process_type import router as data_process_type_router
@@ -62,7 +61,7 @@ def connect_to_db(db_conn: DBConnectionPool):
     try:
         # Connect to the database        
         logger.info("Creating database connection...")
-        db_conn.connect(timeout=DBSettings.timeout_conn)
+        db_conn.connect()
         db_version = db_conn.test()
         # Log the successful connection
         logger.info(

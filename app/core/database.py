@@ -1,6 +1,6 @@
 from psycopg_pool import ConnectionPool
 from psycopg import Connection
-from psycopg.rows import TupleRow
+from psycopg.rows import TupleRow, dict_row
 
 
 # Class for managing PostgreSQL connections
@@ -36,7 +36,7 @@ class DBConnectionPool():
         self.pool: ConnectionPool[Connection[TupleRow]]
 
     # Create connection pool
-    def connect(self, timeout: float):
+    def connect(self, timeout: float = 5):
         # Check pool selfs
         if self.min_size < 0 or self.max_size < 0 or self.timeout < 0:
             raise ValueError("Pool self must be non-negative")
@@ -71,7 +71,8 @@ class DBConnectionPool():
                     conninfo=connstr,
                     min_size=self.min_size,
                     max_size=self.max_size,
-                    timeout=self.timeout
+                    timeout=self.timeout,
+                    kwargs={"row_factory": dict_row}
                 )
             # Open the connection pool
             self.pool.open(wait=True, timeout=timeout)

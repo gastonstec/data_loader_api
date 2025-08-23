@@ -49,7 +49,11 @@ async def get_data_process_type(
         # Check if the process type was found
         if not results:
             return jsend_fail(
-                message=f"Data process type {data_process_type} not found"
+                data={
+                    "error": (
+                        f"Data process type {data_process_type} not found"
+                    )
+                }
             )
         else:
             return jsend_success(data={DATA_PROCESS_TYPES: results})
@@ -67,13 +71,13 @@ async def post_data_process_type(
         # Get and check body contents
         body = await request.body()
         if not body or len(body) == 0:
-            return jsend_fail(message="Invalid body data")
+            return jsend_fail(data={"error": "Invalid body data"})
 
         # Parse the JSON body of the request
         try:
             data = json.loads(body)
         except json.JSONDecodeError:
-            return jsend_fail(message="Invalid JSON body")
+            return jsend_fail(data={"error": "Invalid JSON body"})
 
         # Get the database connection from the request state
         db_conn = request.app.state.db_conn
