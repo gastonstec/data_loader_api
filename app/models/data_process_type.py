@@ -1,9 +1,9 @@
 from psycopg import rows, Cursor
 import json
 from app.core.database import DBConnectionPool
-# from app.schemas.data_process_type import DataProcessType
 
 
+# Constants
 QRY_SELECT_ALL = (
     "SELECT data_process_type, description, table_prefix, "
     "source_table_template, destination_table_name, "
@@ -34,6 +34,7 @@ QRY_INSERT = (
 )
 
 
+# Select multiple data process types
 def _select_in(
     cur: Cursor,
     data_process_types: list[str]
