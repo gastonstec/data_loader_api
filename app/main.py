@@ -2,10 +2,11 @@
 from app.core.config import AppSettings, DBSettings
 # Logging imports
 from loguru import logger
-# Database imports
-from app.core.database import DBConnectionPool
+# Core imports
+from app.core import DBConnectionPool, jsend_success
 # FastAPI imports
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 # Routers imports
@@ -21,8 +22,8 @@ def create_db_pool():
     # Load database settings from the environment
     db_settings = DBSettings()
 
-    # Validate the database settings    
-    if not db_settings.is_valid():
+    # Validate the database settings
+    if not db_settings.check_values():
         raise ValueError("Invalid database settings provided.")
 
     # Log the connection details
@@ -60,7 +61,7 @@ def connect_to_db(db_conn: DBConnectionPool):
     try:
         # Connect to the database        
         logger.info("Creating database connection...")
-        db_conn.connect(timeout=DBSettings.timeout_conn)
+        db_conn.connect()
         db_version = db_conn.test()
         # Log the successful connection
         logger.info(
@@ -120,9 +121,11 @@ app = FastAPI(
     lifespan=lifespan,
     title=AppSettings.name,
     version=AppSettings.version,
-    description=AppSettings.description
+    description=AppSettings.description,
+    default_response_class=JSONResponse
 )
 
+# CORS middleware
 app.add_middleware(
         CORSMiddleware,
         allow_origins=['*'],
@@ -140,8 +143,9 @@ app.include_router(data_process_type_router)
 # Root endpoint for health check
 @app.get("/")
 async def root():
-    return ({
-        'App Name': AppSettings.name,
-        'Version': AppSettings.version,
-        'Description': AppSettings.description
-    })
+    data = {
+        "app_name": {AppSettings.name},
+        "app_version": {AppSettings.version},
+        "app_description": {AppSettings.description}
+    }
+    return jsend_success(data=data)

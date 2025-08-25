@@ -33,7 +33,7 @@ class DBSettings:
     timeout_qry: float = 5.0
     timeout_conn: float = 45.0
 
-    def is_valid(self) -> bool:
+    def check_values(self) -> bool:
         # Validate the database settings.
         if (
             not self.user
