@@ -1,4 +1,4 @@
-from pydantic.main import BaseModel
+from pydantic.main import BaseModel, Optional
 from datetime import datetime
 
 
@@ -7,11 +7,10 @@ class DataProcessType(BaseModel):
     data_process_type: str
     description: str
     table_prefix: str
-    source_table_template: str
     destination_table_name: str
-    other_info: dict
-    created_at: datetime
-    updated_at: datetime
+    other_info: Optional[dict] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     def check_values(self) -> bool:
         # Check data process type
@@ -32,10 +31,13 @@ class DataProcessType(BaseModel):
         # Check table prefix
         if len(self.table_prefix) > 15:
             raise ValueError("table_prefix value is invalid")
-
-        # Check source table template
+        
+        # Check destination table name
         if (
-            len(self.source_table_template) < 15
+            not self.destination_table_name
+            or len(self.destination_table_name) < 1
+            or len(self.destination_table_name) > 60
         ):
-            raise ValueError("source_table_template value is invalid")
+            raise ValueError("destination_table_name value is invalid")
+
         return True

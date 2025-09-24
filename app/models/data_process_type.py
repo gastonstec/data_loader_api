@@ -4,34 +4,30 @@ from app.core.database import DBConnectionPool
 
 
 # Constants
-QRY_SELECT_ALL = (
+# SQL Queries
+QRY_SELECT = (
     "SELECT data_process_type, description, table_prefix, "
     "source_table_template, destination_table_name, "
     "other_info, created_at, updated_at "
-    "FROM data_process_type ORDER BY data_process_type"
-)
+    "FROM data_process_type")
+
+QRY_SELECT_ALL = f"{QRY_SELECT} ORDER BY data_process_type"
 
 QRY_SELECT_IN = (
-    "SELECT data_process_type, description, table_prefix, "
-    "source_table_template, destination_table_name, "
-    "other_info, created_at, updated_at "
-    "FROM data_process_type "
-    "WHERE data_process_type = ANY (%s) "
+    f"{QRY_SELECT} WHERE data_process_type = ANY (%s) "
     "ORDER BY data_process_type"
 )
 
-QRY_SELECT_BY_ID = (
-    "SELECT data_process_type, description, table_prefix, "
-    "source_table_template, destination_table_name, "
-    "other_info, created_at, updated_at "
-    "FROM data_process_type WHERE data_process_type = %s"
-)
+QRY_SELECT_BY_ID = f"{QRY_SELECT} WHERE data_process_type = %s"
 
 QRY_INSERT = (
     "INSERT INTO data_process_type (data_process_type, description, "
     "table_prefix, source_table_template, destination_table_name, other_info) "
     "VALUES (%s, %s, %s, %s, %s, %s)"
 )
+
+# Error Messages
+ERR_MSG_FAILED_CONN = "Failed to get a connection from the pool"
 
 
 # Select multiple data process types
@@ -55,7 +51,7 @@ def get_all(db_conn: DBConnectionPool) -> list[dict]:
         conn = db_conn.get_conn()
         # Check if the connection is valid
         if conn is None:
-            raise ValueError("Failed to get a connection from the pool")
+            raise ValueError(ERR_MSG_FAILED_CONN)
         # Execute query
         qrystr = QRY_SELECT_ALL
         with conn.cursor() as cur:
@@ -79,7 +75,7 @@ def get_by_id(
         conn = db_conn.get_conn()
         # Check if the connection is valid
         if conn is None:
-            raise ValueError("Failed to get a connection from the pool")
+            raise ValueError(ERR_MSG_FAILED_CONN)
         # Execute query
         qrystr = QRY_SELECT_BY_ID
         with conn.cursor(row_factory=rows.dict_row) as cur:
@@ -113,7 +109,7 @@ def create(db_conn: DBConnectionPool, data: dict) -> list[dict]:
         conn = db_conn.get_conn()
         # Check if the connection is valid
         if conn is None:
-            raise ValueError("Failed to get a connection from the pool")
+            raise ValueError(ERR_MSG_FAILED_CONN)
     except Exception as e:
         raise ValueError(str(e))
 

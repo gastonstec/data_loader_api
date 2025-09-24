@@ -26,7 +26,7 @@ class DBSettings:
     password: str = "c4rec4"
     host: str = "localhost"
     port: int = 5432
-    dbname: str = "corilian"
+    dbname: str = "gtim_services"
     appname: str = "DataLoaderAPI"
     min_size: int = 1
     max_size: int = 5
