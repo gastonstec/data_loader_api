@@ -28,7 +28,7 @@ class DBSettings:
     port: int = 5432
     dbname: str = "gtim_services"
     appname: str = "DataLoaderAPI"
-    min_size: int = 1
+    min_size: int = 3
     max_size: int = 5
     timeout_qry: float = 5.0
     timeout_conn: float = 45.0
